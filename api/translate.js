@@ -1,5 +1,3 @@
-const GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -9,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY دانەنراوە" });
+  if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY دانەنراوە لە Vercel" });
 
   let body = req.body;
   if (typeof body === "string") {
@@ -19,17 +17,18 @@ export default async function handler(req, res) {
   const parts = body?.parts;
   if (!parts || !Array.isArray(parts)) return res.status(400).json({ error: "هیچ دەقێک نەنێردراوە" });
 
-  const modelsToTry = [
-    "gemini-1.5-flash-8b",
-    "gemini-2.0-flash-exp",
-    "gemini-2.0-flash"
+  // بەکارهێنانی ناوی مۆدێلی نوێ بەپێی ڕێنمایی فەرمیی Google API
+  const endpoints = [
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`
   ];
 
   let lastError = "";
 
-  for (const model of modelsToTry) {
+  for (const url of endpoints) {
     try {
-      const response = await fetch(`${GEMINI_ENDPOINT_BASE}/${model}:generateContent?key=${apiKey}`, {
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -44,7 +43,7 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
 
-      lastError = data?.error?.message || `Error with ${model}`;
+      lastError = data?.error?.message || "هەڵەی سێرڤەری گۆگڵ";
     } catch (e) {
       lastError = e.message;
     }
