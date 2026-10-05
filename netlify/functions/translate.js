@@ -2,40 +2,41 @@ const GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/m
 const UPSTREAM_TIMEOUT_MS = 45000;
 const MAX_PAYLOAD_BYTES = 8000000;
 
-export default async (req, context) => {
+export default async function handler(req, res) {
+  // ڕێکخستنی CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+    return res.status(204).end();
   }
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed. Use POST." }, 405);
+    return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  // ئەگەر مۆدێل دیاری نەکرابوو لە Flash بەکاردێت
+  const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
   if (!GEMINI_API_KEY) {
-    return jsonResponse({ error: "GEMINI_API_KEY is not configured on the server." }, 500);
+    return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
   }
 
-  let body;
-  try {
-    body = await req.json();
-  } catch {
-    return jsonResponse({ error: "Invalid JSON body." }, 400);
+  let body = req.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      return res.status(400).json({ error: "Invalid JSON body." });
+    }
   }
 
   const { parts } = body || {};
 
   if (!Array.isArray(parts) || parts.length === 0) {
-    return jsonResponse({ error: "Field 'parts' must be a non-empty array." }, 400);
+    return res.status(400).json({ error: "Field 'parts' must be a non-empty array." });
   }
 
   for (const part of parts) {
@@ -46,20 +47,20 @@ export default async (req, context) => {
       typeof part.inlineData.mimeType === "string";
 
     if (!isText && !isImage) {
-      return jsonResponse({ error: "Each part must contain either 'text' or 'inlineData'." }, 400);
+      return res.status(400).json({ error: "Each part must contain either 'text' or 'inlineData'." });
     }
 
     if (isImage) {
       const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
       if (!allowed.includes(part.inlineData.mimeType)) {
-        return jsonResponse({ error: `Unsupported image MIME type: ${part.inlineData.mimeType}` }, 400);
+        return res.status(400).json({ error: `Unsupported image MIME type: ${part.inlineData.mimeType}` });
       }
     }
   }
 
   const payloadSize = JSON.stringify(parts).length;
   if (payloadSize > MAX_PAYLOAD_BYTES) {
-    return jsonResponse({ error: "Payload too large. Please use a smaller image." }, 413);
+    return res.status(413).json({ error: "Payload too large. Please use a smaller image." });
   }
 
   const url = `${GEMINI_ENDPOINT_BASE}/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
@@ -84,31 +85,21 @@ export default async (req, context) => {
 
     if (!upstream.ok) {
       const message = data?.error?.message || `Upstream returned HTTP ${upstream.status}`;
-      return jsonResponse({ error: message }, upstream.status);
+      return res.status(upstream.status).json({ error: message });
     }
 
     if (!data) {
-      return jsonResponse({ error: "Upstream returned an empty response." }, 502);
+      return res.status(502).json({ error: "Upstream returned an empty response." });
     }
 
-    return jsonResponse(data, 200);
+    return res.status(200).json(data);
   } catch (err) {
     clearTimeout(timeout);
 
     if (err.name === "AbortError") {
-      return jsonResponse({ error: "The AI model took too long to respond. Please try again." }, 504);
+      return res.status(504).json({ error: "The AI model took too long to respond. Please try again." });
     }
 
-    return jsonResponse({ error: "Upstream request failed: " + err.message }, 502);
+    return res.status(502).json({ error: "Upstream request failed: " + err.message });
   }
-};
-
-function jsonResponse(payload, status = 200) {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "no-store",
-    },
-  });
 }
