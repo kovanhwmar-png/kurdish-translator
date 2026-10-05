@@ -1,22 +1,26 @@
 export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "تەنها میتۆدی POST ڕێگەپێدراوە" });
+    return res.status(405).json({ error: "تەنها POST ڕێگەپێدراوە" });
   }
 
-  let text = "";
-  
-  if (typeof req.body === "string") {
+  let body = req.body;
+  if (typeof body === "string") {
     try {
-      const parsed = JSON.parse(req.body);
-      text = parsed.text || "";
-    } catch {
-      return res.status(400).json({ error: "JSON نادروست" });
+      body = JSON.parse(body);
+    } catch (e) {
+      body = {};
     }
-  } else if (typeof req.body === "object" && req.body !== null) {
-    text = req.body.text || "";
   }
 
-  text = text.trim();
+  const text = body?.text?.trim() || "";
 
   if (!text) {
     return res.status(400).json({ error: "هەڵە: تکایە دەقێک بنووسە" });
