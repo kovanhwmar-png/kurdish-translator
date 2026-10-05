@@ -19,15 +19,16 @@ export default async function handler(req, res) {
   const parts = body?.parts;
   if (!parts || !Array.isArray(parts)) return res.status(400).json({ error: "هیچ دەقێک نەنێردراوە" });
 
-  const modelsToTry = [
-    process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    "gemini-2.5-pro",
-    "gemini-3.8-flash"
+  // لیستێک لە مۆدێلە خێرا و کاراکان؛ ئەگەر یەکێکیان لۆدی لەسەر بوو، دەچێتە سەر ئەوی تر
+  const candidateModels = [
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-1.5-flash-latest"
   ];
 
-  let lastError = null;
+  let lastErrorMessage = "";
 
-  for (const model of modelsToTry) {
+  for (const model of candidateModels) {
     try {
       const response = await fetch(`${GEMINI_ENDPOINT_BASE}/${model}:generateContent?key=${apiKey}`, {
         method: "POST",
@@ -44,11 +45,11 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
 
-      lastError = data?.error?.message || `هەڵە لە مۆدێل ${model}`;
+      lastErrorMessage = data?.error?.message || `Error with model ${model}`;
     } catch (e) {
-      lastError = e.message;
+      lastErrorMessage = e.message;
     }
   }
 
-  return res.status(502).json({ error: lastError });
+  return res.status(503).json({ error: lastErrorMessage });
 }
