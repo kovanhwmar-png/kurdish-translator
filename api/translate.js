@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
   if (!apiKey) {
     return res.status(500).json({ error: "GEMINI_API_KEY دانەنراوە لە Vercel" });
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
   const parts = body?.parts;
   if (!parts || !Array.isArray(parts)) {
-    return res.status(400).json({ error: "هیچ پەڕگەیەک یان دەقێک نەنێردراوە" });
+    return res.status(400).json({ error: "هیچ دەقێک نەنێردراوە" });
   }
 
   try {
