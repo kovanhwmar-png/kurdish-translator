@@ -17,18 +17,14 @@ export default async function handler(req, res) {
   const parts = body?.parts;
   if (!parts || !Array.isArray(parts)) return res.status(400).json({ error: "هیچ دەقێک نەنێردراوە" });
 
-  // لیستی ئەو مۆدێلانەی لەسەر هەژمارەکەت کاردەکەن
   const preferredModels = [
     "gemini-3.8-flash",
     "gemini-3.1-pro-preview",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-2.0-flash"
   ];
 
   let activeModels = [];
-
-  // دۆزینەوەی ئۆتۆماتیکیی ئەو مۆدێلانەی کە گۆگڵ لە ئێستادا بۆ کلیلەکەت ڕێگەیان پێدەدات
   try {
     const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
     const listData = await listRes.json();
@@ -37,11 +33,8 @@ export default async function handler(req, res) {
         .filter(m => m.supportedGenerationMethods?.includes("generateContent"))
         .map(m => m.name.replace("models/", ""));
     }
-  } catch (e) {
-    // پشت بەستن بە لیستی پێشوەختە لەکاتی کێشەی خزمەتگوزاری
-  }
+  } catch (e) {}
 
-  // یەکخستنی مۆدێلە دۆزراوەکان
   const queue = Array.from(new Set([...preferredModels, ...activeModels]));
   let lastError = "";
 
@@ -59,10 +52,15 @@ export default async function handler(req, res) {
       const data = await response.json();
 
       if (response.ok) {
+        // پاککردنەوەی دەقی JSON لە هەر نیشانەیەکی مارکداون وەک ```json یان پاشماوەکان
+        let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
+          data.candidates[0].content.parts[0].text = rawText;
+        }
         return res.status(200).json(data);
       }
 
-      // ئەگەر لۆدی لەسەر بوو یان بەردەست نەبوو، دەچێتە سەر مۆدێلی دواتر
       lastError = data?.error?.message || `Error with ${model}`;
     } catch (e) {
       lastError = e.message;
