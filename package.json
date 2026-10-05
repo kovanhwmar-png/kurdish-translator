@@ -1,0 +1,10 @@
+{
+  "name": "kurdish-smart-translator",
+  "version": "1.0.0",
+  "description": "وەرگێڕی ژیر — Kurdish Contextual AI Translator",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}
