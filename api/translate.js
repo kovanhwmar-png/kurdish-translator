@@ -17,46 +17,36 @@ export default async function handler(req, res) {
   const parts = body?.parts;
   if (!parts || !Array.isArray(parts)) return res.status(400).json({ error: "هیچ دەقێک نەنێردراوە" });
 
-  const preferredModels = [
-    "gemini-3.8-flash",
-    "gemini-3.1-pro-preview",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash"
-  ];
-
-  let activeModels = [];
-  try {
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    const listData = await listRes.json();
-    if (listData?.models) {
-      activeModels = listData.models
-        .filter(m => m.supportedGenerationMethods?.includes("generateContent"))
-        .map(m => m.name.replace("models/", ""));
-    }
-  } catch (e) {}
-
-  const queue = Array.from(new Set([...preferredModels, ...activeModels]));
+  // ڕاستەوخۆ دیاریکردنی ئەو دوو مۆدێلەی لەسەر هەژمارەکەت کاردەکەن بەبێ دواکەوتن
+  const models = ["gemini-3.8-flash", "gemini-3.1-pro-preview"];
   let lastError = "";
 
-  for (const model of queue) {
+  for (const model of models) {
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { responseMimeType: "application/json", temperature: 0.7 }
+          generationConfig: { 
+            responseMimeType: "application/json", 
+            temperature: 0.3 
+          }
         })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // پاککردنەوەی دەقی JSON لە هەر نیشانەیەکی مارکداون وەک ```json یان پاشماوەکان
         let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
-          rawText = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-          data.candidates[0].content.parts[0].text = rawText;
+          // پاککردنەوەی هەموو نیشانە و ئەستێرە و مارکداونەکان پێش و پاشی JSON
+          const jsonStart = rawText.indexOf('{');
+          const jsonEnd = rawText.lastIndexOf('}');
+          if (jsonStart !== -1 && jsonEnd !== -1) {
+            rawText = rawText.substring(jsonStart, jsonEnd + 1);
+          }
+          data.candidates[0].content.parts[0].text = rawText.trim();
         }
         return res.status(200).json(data);
       }
