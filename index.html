@@ -15,8 +15,21 @@
     <meta name="apple-mobile-web-app-title" content="وەرگێڕی ژیر">
     <link rel="manifest" href="/manifest.json">
 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-07DV6R9VEP"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-07DV6R9VEP');
+    </script>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <style>
         body { background-color: #090d16; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
@@ -66,175 +79,5 @@
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
-                <div id="googleAuthBox" class="text-center py-2 text-xs text-slate-400">
-                    بەخێربێیت بۆ وەرگێڕی ژیر
-                </div>
-            </div>
-        </div>
-    </aside>
 
-    <header class="p-4 border-b border-slate-800 flex items-center justify-between max-w-4xl mx-auto w-full">
-        <button onclick="toggleSidebar()" class="p-2 bg-slate-900 border border-slate-800 rounded-xl hover:border-purple-500/50 transition-colors">
-            <i data-lucide="menu" class="w-5 h-5 text-purple-400"></i>
-        </button>
-        <h1 class="text-lg font-black bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">وەرگێڕی ژیری کوردی</h1>
-        <div class="w-9"></div>
-    </header>
-
-    <main class="flex-1 max-w-4xl mx-auto w-full p-4 flex flex-col gap-4">
-        <!-- بۆکسی نوسینی سەرەکی -->
-        <div class="flex flex-col bg-slate-900/50 border border-slate-800 rounded-2xl p-4 focus-within:border-purple-500/50 transition-all">
-            <textarea id="sourceText" rows="4" placeholder="دەقەکەت لێرە بنووسە یان کۆپی بکە..." class="w-full bg-transparent resize-none outline-none text-slate-100 placeholder:text-slate-500 text-sm md:text-base leading-relaxed custom-scrollbar"></textarea>
-            
-            <div class="flex justify-between items-center pt-3 border-t border-slate-800/60 mt-2">
-                <span id="charCount" class="text-xs text-slate-500">٠ پیت</span>
-                <button id="translateBtn" onclick="startTranslation()" class="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-purple-600/20 active:scale-95">
-                    <i data-lucide="sparkles" class="w-4 h-4"></i>
-                    <span>وەرگێڕان</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- بۆکسی دەرئەنجام -->
-        <div class="flex flex-col bg-slate-900/90 border border-slate-800 rounded-2xl p-4 relative min-h-[160px]">
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
-                <span class="text-xs font-semibold text-purple-400 flex items-center gap-1.5">
-                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
-                    دەقی وەرگێڕدراو
-                </span>
-                <button onclick="copyResult()" title="کۆپیکردن" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors">
-                    <i data-lucide="copy" class="w-4 h-4"></i>
-                </button>
-            </div>
-            
-            <div id="targetText" class="w-full flex-1 text-slate-200 text-sm md:text-base leading-relaxed select-text whitespace-pre-wrap"></div>
-        </div>
-    </main>
-
-    <footer class="p-3 text-center text-xs text-slate-600 border-t border-slate-900">
-        بەهێزکراوە بە وەشانی نوێی Gemini Flash
-    </footer>
-
-    <script>
-        lucide.createIcons();
-
-        function toggleSidebar() {
-            const drawer = document.getElementById('sidebarDrawer');
-            const backdrop = document.getElementById('drawerBackdrop');
-            drawer.classList.toggle('-translate-x-full');
-            backdrop.classList.toggle('hidden');
-        }
-
-        function switchSidebarTab(tab) {
-            const histList = document.getElementById('historyList');
-            const favList = document.getElementById('favoritesList');
-            const tabH = document.getElementById('tabHistory');
-            const tabF = document.getElementById('tabFavorites');
-
-            if (tab === 'history') {
-                histList.classList.remove('hidden');
-                favList.classList.add('hidden');
-                tabH.className = "py-1.5 rounded-lg font-medium bg-purple-600/30 text-purple-300 border border-purple-500/30 transition-all";
-                tabF.className = "py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all";
-            } else {
-                histList.classList.add('hidden');
-                favList.classList.remove('hidden');
-                tabF.className = "py-1.5 rounded-lg font-medium bg-purple-600/30 text-purple-300 border border-purple-500/30 transition-all";
-                tabH.className = "py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all";
-            }
-        }
-
-        document.getElementById('sourceText').addEventListener('input', (e) => {
-            document.getElementById('charCount').innerText = `${e.target.value.length} پیت`;
-        });
-
-        // فەنکشنی سەرەکی وەرگێڕان بە Streaming
-        async function startTranslation() {
-            const input = document.getElementById('sourceText');
-            const output = document.getElementById('targetText');
-            const btn = document.getElementById('translateBtn');
-            const text = input.value.trim();
-
-            if (!text) return;
-
-            output.innerText = '';
-            btn.disabled = true;
-            btn.classList.add('opacity-50');
-
-            try {
-                const response = await fetch('/api/translate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        parts: [{ text: `تکایە ئەم دەقە بە شێوازێکی زۆر دەقیق و پاراو وەربگێڕە بۆ کوردیی سۆرانی بەبێ هیچ دەقی زیادە:\n\n${text}` }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(errData.error || 'هەڵەیەک ڕوویدا لە سێرڤەر');
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullText = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value, { stream: true });
-                    fullText += chunk;
-                    output.innerText = fullText;
-                }
-
-                saveToLocalHistory(text, fullText);
-            } catch (err) {
-                output.innerText = `هەڵە: ${err.message}`;
-            } finally {
-                btn.disabled = false;
-                btn.classList.remove('opacity-50');
-            }
-        }
-
-        function copyResult() {
-            const text = document.getElementById('targetText').innerText;
-            if (text) {
-                navigator.clipboard.writeText(text);
-                alert('کۆپی کرا!');
-            }
-        }
-
-        function saveToLocalHistory(src, trg) {
-            let hist = JSON.parse(localStorage.getItem('krd_trans_history') || '[]');
-            hist.unshift({ src, trg, time: new Date().toLocaleTimeString('ku') });
-            if (hist.length > 20) hist.pop();
-            localStorage.setItem('krd_trans_history', JSON.stringify(hist));
-            renderHistory();
-        }
-
-        function renderHistory() {
-            const list = document.getElementById('historyList');
-            let hist = JSON.parse(localStorage.getItem('krd_trans_history') || '[]');
-            list.innerHTML = '';
-            hist.forEach(item => {
-                const div = document.createElement('div');
-                div.className = "p-2 bg-slate-900 border border-slate-800 rounded-lg text-xs cursor-pointer hover:border-purple-500/40 transition-colors";
-                div.innerHTML = `<div class="font-bold text-slate-300 truncate">${item.src}</div><div class="text-purple-400 mt-1 truncate">${item.trg}</div>`;
-                div.onclick = () => {
-                    document.getElementById('sourceText').value = item.src;
-                    document.getElementById('targetText').innerText = item.trg;
-                };
-                list.appendChild(div);
-            });
-        }
-
-        function clearHistory() {
-            localStorage.removeItem('krd_trans_history');
-            renderHistory();
-        }
-
-        renderHistory();
-    </script>
-</body>
-</html>
+                <div id="googleAuthBox" class="
