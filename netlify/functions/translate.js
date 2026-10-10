@@ -23,33 +23,39 @@ exports.handler = async (event) => {
     };
     const style = toneMap[tone] || 'natural';
 
-    const systemPrompt = targetLang === 'ar'
-      ? `تۆ وەرگێڕێکی کوردی و عەرەبیت. ئەم دەقە کوردییە وەربگێڕە بۆ زمانی عەرەبی بە شێوازی ${style}. تەنها دەقی وەرگێڕدراو بنووسە بەبێ هیچ ڕوونکردنەوەیەک:`
-      : `You are an expert Kurdish linguist. Accurately translate this Kurdish text (Sorani, Hawleri, Sulaymani, and Badini dialects, idioms, and slang) into English with a ${style} tone. Output ONLY the translated text without quotes or notes:`;
+    const promptText = targetLang === 'ar'
+      ? `وەک زمانزانێکی پسپۆڕ، ئەم دەقە کوردییە وەربگێڕە بۆ عەرەبی بە شێوازی ${style}. تەنها دەقی وەرگێڕدراو بنووسە بەبێ هیچ تێبینییەک:\n\n${text}`
+      : `You are an elite Kurdish linguist. Translate this Kurdish text (Sorani, Hawleri, Sulaymani, and Badini dialects, idioms, and slang) into English with a ${style} tone. Output ONLY the translation without quotes or notes:\n\n${text}`;
 
-    // بەکارهێنانی فەرمیی Interactions API بۆ gemini-3.8-flash
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey
-      },
-      body: JSON.stringify({
-        model: 'gemini-3.8-flash',
-        input: `${systemPrompt}\n\n${text}`
-      })
-    });
+    // سنووردارکردنی چاوەڕوانی بۆ ١٠ چرکە تا نەکەوێتە داوی ٣٠ چرکەی سێرڤەر
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: promptText }]
+            }
+          ]
+        }),
+        signal: controller.signal
+      }
+    );
+
+    clearTimeout(timeoutId);
     const data = await response.json();
 
-    // وەرگرتنەوەی ئەنجام لە فۆرماتی نوێی Interactions API
-    const result = data.output_text || data.output?.[0]?.content || data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (response.ok && result) {
+    if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-        body: result.trim()
+        body: data.candidates[0].content.parts[0].text.trim()
       };
     }
 
@@ -62,13 +68,14 @@ exports.handler = async (event) => {
 
     return {
       statusCode: 500,
-      body: 'هەڵە لە وەرگرتنەوەی وەڵام'
+      body: 'هەڵە لە وەرگرتنەوەی ئەنجام'
     };
 
   } catch (error) {
+    const isTimeout = error.name === 'AbortError';
     return {
       statusCode: 500,
-      body: `هەڵەی سێرڤەر: ${error.message}`
+      body: isTimeout ? 'کاتی وەڵامدانەوە بەسەرچوو، تکایە کلیلەکەت بپشکنە.' : `هەڵەی سیستەم: ${error.message}`
     };
   }
 };
