@@ -25,19 +25,23 @@ exports.handler = async (event) => {
 
     const systemPrompt = targetLang === 'ar'
       ? `Translate this Kurdish text into Arabic in a ${style} tone. Provide ONLY the direct translation without any explanation:`
-      : `You are a Kurdish linguist. Translate this Kurdish text (Sorani, Erbil, Sulaymani, Badini dialects and slang) into English in a ${style} tone. Provide ONLY the direct translation without quotes or notes:`;
+      : `You are an elite Kurdish linguist. Translate this Kurdish text (handling Sorani: Hawleri, Sulaymani, and Kurmanji/Badini dialects and street slang) into English in a ${style} tone. Provide ONLY the direct translation without quotes or notes:`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [
             {
+              role: 'user',
               parts: [{ text: `${systemPrompt}\n\n${text}` }]
             }
-          ]
+          ],
+          generationConfig: {
+            temperature: 0.3
+          }
         })
       }
     );
