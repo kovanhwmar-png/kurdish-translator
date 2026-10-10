@@ -16,13 +16,8 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return {
-        statusCode: 500,
-        body: 'کلیلی GEMINI_API_KEY لە سێرڤەر نەدۆزرایەوە'
-      };
-    }
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
 
     const toneInstructions = {
       natural: 'سروشتی و ئاسایی',
@@ -40,46 +35,86 @@ exports.handler = async (event, context) => {
 دەق:
 ${text}`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{ text: promptText }]
-          }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 2048,
+    // هەوڵی یەکەم: بەکارهێنانی مۆدێلی نوێی gemini-2.5-flash
+    if (geminiKey) {
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: {
+                temperature: 0.3,
+                maxOutputTokens: 2048,
+              }
+            })
           }
-        })
+        );
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const translated = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (translated) {
+            return {
+              statusCode: 200,
+              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+              body: translated.trim()
+            };
+          }
+        }
+      } catch (err) {
+        console.log('Gemini error, switching to fallback...');
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return {
-        statusCode: response.status,
-        body: `هەڵەی گووگڵ: ${data?.error?.message || response.statusText}`
-      };
     }
 
-    const translation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'وەرگێڕان بەردەست نەبوو';
+    // گۆڕینی خۆکارانە بۆ OpenAI ئەگەر گووگڵ پەستان یان هەڵەی هەبوو
+    if (openaiKey) {
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'تۆ وەرگێڕێکی زمانزانی لێهاتووی زمانی کوردیی سۆرانیت.'
+            },
+            {
+              role: 'user',
+              content: promptText
+            }
+          ],
+          temperature: 0.3
+        })
+      });
+
+      if (openaiRes.ok) {
+        const openaiData = await openaiRes.json();
+        const translated = openaiData.choices?.[0]?.message?.content;
+        if (translated) {
+          return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            body: translated.trim()
+          };
+        }
+      }
+    }
 
     return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8'
-      },
-      body: translation.trim()
+      statusCode: 503,
+      body: 'سێرڤەرەکان لەم ساتەدا سەرقاڵن، تکایە دوای چەند چرکەیەک هەوڵ بدەرەوە.'
     };
 
   } catch (error) {
     return {
       statusCode: 500,
-      body: `هەڵەی سێرڤەر: ${error.message}`
+      body: `هەڵە: ${error.message}`
     };
   }
 };
