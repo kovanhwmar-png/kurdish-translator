@@ -11,7 +11,13 @@ exports.handler = async (event, context) => {
     }
 
     const geminiKey = process.env.GEMINI_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
+
+    if (!geminiKey) {
+      return {
+        statusCode: 500,
+        body: 'هەڵە: کلیلی GEMINI_API_KEY لە سێرڤەر بوونی نییە'
+      };
+    }
 
     const toneInstructions = {
       natural: 'سروشتی، ڕۆژانە و گفتوگۆیی',
@@ -27,99 +33,54 @@ exports.handler = async (event, context) => {
     if (direction === 'ku-to-en') {
       promptText = `You are an expert Kurdish linguist and translator specialized in all Kurdish dialects (Sorani: Erbil/Hawleri, Sulaymaniyah, and Kurmanji/Badini) including local street slang and idioms.
 Task: Translate the following Kurdish text into accurate English with a ${selectedTone} tone.
-Important rules:
-1. Deeply understand Kurdish idioms, slang, and dialectal variations (whether Erbil, Sulaymani, or Badini slang).
-2. Output ONLY the English translation. Do NOT add notes, explanations, or quotes.
+Rules:
+1. Deeply understand Kurdish idioms, slang, and dialectal variations (Erbil, Sulaymani, Badini).
+2. Output ONLY the English translation without quotes, notes, or extra commentary.
 
-Kurdish input:
+Kurdish text:
 ${text}`;
     } else {
-      promptText = `تۆ زمانزانێکی پسپۆڕی زمانی کوردییت. ئەم دەقە ئینگلیزییە وەربگێڕە بۆ کوردی بە شێوازی ${selectedTone}.
-دەبێت ڕەچاوی دەربڕینی ڕەسەنی کوردی بکەیت.
-تەنها دەقی وەرگێڕدراوی کوردی بنووسە بەبێ هیچ ڕوونکردنەوە و تێبینییەکی زیادە.
+      promptText = `تۆ زمانزانێکی لێهاتووی زمانی کوردییت. ئەم دەقە ئینگلیزییە وەربگێڕە بۆ کوردی بە شێوازی ${selectedTone}.
+تەنها دەقی وەرگێڕدراوی کوردی بنووسە بەبێ هیچ تێبینی و ڕوونکردنەوەیەکی زیادە.
 
 دەقی ئینگلیزی:
 ${text}`;
     }
 
-    let lastError = '';
-
-    // هەوڵی یەکەم: بەکارهێنانی مۆدێلە مۆدێرنەکانی گووگڵ جێمینای
-    if (geminiKey) {
-      const models = ['gemini-2.5-flash', 'gemini-2.0-flash'];
-      for (const model of models) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: promptText }] }],
-                generationConfig: { temperature: 0.3 }
-              })
-            }
-          );
-
-          const data = await res.json();
-          if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
-            return {
-              statusCode: 200,
-              headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-              body: data.candidates[0].content.parts[0].text.trim()
-            };
-          } else if (data.error?.message) {
-            lastError = `گووگڵ (${model}): ${data.error.message}`;
-          }
-        } catch (e) {
-          lastError = `گووگڵ: ${e.message}`;
-        }
-      }
-    }
-
-    // هەوڵی دووەم (Fallback): کاتێک گووگڵ دانەخرێت یان ئۆڤەرلۆد بێت، ChatGPT وەریدەگێڕێت
-    if (openaiKey) {
-      try {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openaiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              { role: 'system', content: 'You are an elite Kurdish-English translator.' },
-              { role: 'user', content: promptText }
-            ],
+    // بەکارهێنانی مۆدێلی نوێی فەرمی gemini-3.8-flash
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: {
             temperature: 0.3
-          })
-        });
-
-        const data = await res.json();
-        if (res.ok && data.choices?.[0]?.message?.content) {
-          return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-            body: data.choices[0].message.content.trim()
-          };
-        } else if (data.error?.message) {
-          lastError += ` | ئۆپن ئەی ئای: ${data.error.message}`;
-        }
-      } catch (e) {
-        lastError += ` | ئۆپن ئەی ئای: ${e.message}`;
+          }
+        })
       }
+    );
+
+    const data = await res.json();
+
+    if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        body: data.candidates[0].content.parts[0].text.trim()
+      };
     }
 
     return {
       statusCode: 500,
-      body: `هەڵە: ${lastError || 'سێرڤەر وەڵامی نەدایەوە'}`
+      body: `هەڵەی گووگڵ: ${data.error?.message || 'وەرگێڕان ئەنجام نەدرا'}`
     };
 
   } catch (error) {
     return {
       statusCode: 500,
-      body: `هەڵەی ناوخۆیی: ${error.message}`
+      body: `هەڵەی سیستەم: ${error.message}`
     };
   }
 };
