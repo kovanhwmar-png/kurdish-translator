@@ -31,9 +31,8 @@ export default async (req, context) => {
 دەق:
 ${text}`;
 
-    // بەکارهێنانی مۆدێلی خێرا و سەقامگیر بۆ کەمکردنەوەی لۆد
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,17 +51,4 @@ ${text}`;
     const data = await response.json();
 
     if (!response.ok) {
-      return new Response(`هەڵەی گووگڵ: ${data?.error?.message || response.statusText}`, { status: response.status });
-    }
-
-    const translation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'وەرگێڕان بەردەست نەبوو';
-
-    return new Response(translation.trim(), {
-      status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-    });
-
-  } catch (error) {
-    return new Response(`هەڵەی ناوخۆیی: ${error.message}`, { status: 500 });
-  }
-};
+      return new Response(`هەڵەی گووگڵ:
