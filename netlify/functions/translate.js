@@ -6,55 +6,55 @@ export default async (req, context) => {
   try {
     const { text, sourceLang, tone } = await req.json();
 
-    if (!text || !sourceLang || !tone) {
-      return new Response('Missing required fields', { status: 400 });
+    if (!text) {
+      return new Response('تکایە دەقێک بنووسە', { status: 400 });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return new Response('API key not configured', { status: 500 });
+      return new Response('کلیلی GEMINI_API_KEY لە سێرڤەر نەدۆزرایەوە', { status: 500 });
     }
 
     const toneInstructions = {
-      natural: 'بە شێوازێکی سروشتی و ئاسایی کە لە ژیانی ڕۆژانەدا بەکاردێت',
-      formal: 'بە شێوازێکی فەرمی و ئەکادیمی بە ڕێزدارانە',
-      street: 'بە شێوازێکی کۆڵانی و سلانگی نوێ کە گەنجان بەکاری دەهێنن',
-      literary: 'بە شێوازێکی ئەدەبی و هونەری بە وشە جوانەکان'
+      natural: 'سروشتی و ئاسایی',
+      formal: 'فەرمی و ئەکادیمی',
+      street: 'کۆڵانی و سلانگ',
+      literary: 'ئەدەبی و شاعیرانە'
     };
 
-    const prompt = `تۆ وەرگێڕێکی پسپۆڕی بۆ زمانی کوردیی سۆرانی (ناوەڕاستی عێراق). ئەرکت ئەوەیە کە دەقی خوارەوە لە ${sourceLang === 'en' ? 'ئینگلیزی' : 'عەرەبی'} بۆ کوردیی سۆرانی بگێڕیتەوە ${toneInstructions[tone]}.
-ڕێنماییە گرنگەکان:
-- تەنها دەقی وەرگێڕدراو بنووسە، هیچ زیادەیەکی تر مەنووسە
-- لە ئەلفوبێی کوردیی عەرەبی (یونیکۆد) بەکاری بهێنە
-- ژمارەکان بە ژمارەی عەرەبی-ھیندی (١ ٢ ٣) بنووسە
-- بیرکردنەوەی قووڵ بەکاربهێنە بۆ گەیاندنی واتای ڕاست نەک وشە بە وشە
-- کەلتووری کوردی لە بەرچاو بگرە
-- ئەگەر دەقەکە پرسیارێکە، وەڵامی مەدەرەوە، تەنها بیگێڕەوە
-دەقەکە:
-${text}
-وەرگێڕانی کوردی:`;
+    const selectedTone = toneInstructions[tone] || 'سروشتی';
+    const fromLanguage = sourceLang === 'ar' ? 'عەرەبی' : 'ئینگلیزی';
+
+    const promptText = `تۆ وەرگێڕێکی لێهاتووی. ئەم دەقەی خوارەوە لە زمانی ${fromLanguage} وەربگێڕە بۆ زمانی کوردیی سۆرانی بە شێوازی ${selectedTone}.
+تەنها و تەنها دەقی وەرگێڕدراوی کوردی بنووسە بەبێ هیچ ڕوونکردنەوە و دەقی زیادە.
+
+دەق:
+${text}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{
+            parts: [{ text: promptText }]
+          }],
           generationConfig: {
-            temperature: tone === 'literary' ? 0.9 : tone === 'street' ? 0.85 : 0.7,
+            temperature: 0.3,
             maxOutputTokens: 2048,
           }
         })
       }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      return new Response(`هەڵەی گووگڵ: ${data?.error?.message || response.statusText}`, { status: response.status });
     }
 
-    const data = await response.json();
-    const translation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'هەڵەیەک ڕوویدا';
+    const translation = data.candidates?.[0]?.content?.parts?.[0]?.text || 'وەرگێڕان بەردەست نەبوو';
 
     return new Response(translation.trim(), {
       status: 200,
@@ -62,7 +62,6 @@ ${text}
     });
 
   } catch (error) {
-    console.error('Translation error:', error);
-    return new Response('Internal server error', { status: 500 });
+    return new Response(`هەڵەی ناوخۆیی: ${error.message}`, { status: 500 });
   }
 };
