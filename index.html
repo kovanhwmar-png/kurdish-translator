@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>وەرگێڕی ژیر | وەرگێڕی ژیری دەستکرد</title>
+  <title>وەرگێڕی ژیر | ژیری دەستکرد</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     body {
@@ -29,7 +30,7 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between p-3 sm:p-6 select-none relative overflow-x-hidden">
 
-  <!-- تاریککردنی پاشبنەما لە کاتی کردنەوەی مێنیو -->
+  <!-- تاریککردنی پاشبنەما -->
   <div id="backdrop" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden transition-opacity"></div>
 
   <!-- مێنیوی لایەن (Sidebar Drawer) -->
@@ -55,38 +56,55 @@
       <div class="mt-6">
         <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5 mb-2">⭐ دڵخوازەکان</span>
         <div id="favoritesList" class="space-y-2 max-h-36 overflow-y-auto pr-1 text-xs text-slate-400">
-          <p class="text-slate-600 text-[11px]">هیچ وەرگێڕانێک لە دڵخوازەکان نییە</p>
+          <p class="text-slate-600 text-[11px]">هیچ دەقێک پاشەکەوت نەکراوە</p>
         </div>
       </div>
     </div>
 
-    <!-- چوونەژوورەوە بە گووگڵ لە بنەوەی مێنیو -->
+    <!-- چوونەژوورەوەی فەرمیی Google لە خوارەوەی مێنیو -->
     <div class="pt-4 border-t border-slate-800">
-      <button id="googleLoginBtn" class="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-semibold text-xs flex items-center justify-center gap-2 shadow-md transition">
-        <svg class="w-4 h-4" viewBox="0 0 24 24">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-        </svg>
-        <span>چوونەژوورەوە بە Google</span>
-      </button>
+      <div id="googleSignInWrapper" class="flex justify-center">
+        <div id="g_id_onload"
+             data-client_id="339505391521-q6428177pgl0oah8m2su666mq85r4o2t.apps.googleusercontent.com"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleLogin"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="pill"
+             data-theme="filled_blue"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left">
+        </div>
+      </div>
+
+      <!-- بەشی پرۆفایل دوای سەرکەوتنی چوونەژوورەوە -->
+      <div id="userProfileBox" class="hidden flex items-center justify-between p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+        <div class="flex items-center gap-2">
+          <img id="userAvatar" src="" alt="Avatar" class="w-8 h-8 rounded-full border border-purple-400 object-cover">
+          <div class="text-right">
+            <p id="userName" class="text-xs font-bold text-white leading-tight"></p>
+            <p id="userEmail" class="text-[10px] text-slate-400 leading-tight"></p>
+          </div>
+        </div>
+        <button id="logoutBtn" class="text-xs text-red-400 hover:text-red-300 px-2 py-1 transition">دەرچوون</button>
+      </div>
     </div>
   </aside>
 
   <!-- سەردێڕ (Header) -->
   <header class="max-w-md mx-auto w-full flex items-center justify-between mb-4">
-    <!-- پڕۆفایل -->
     <div class="w-10 h-10 rounded-full border border-purple-500/40 p-0.5 overflow-hidden">
-      <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80" alt="Avatar" class="w-full h-full rounded-full object-cover">
+      <img id="topAvatarImg" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100&q=80" alt="Avatar" class="w-full h-full rounded-full object-cover">
     </div>
 
-    <!-- ناوی ئەپڵیکەیشن -->
     <div class="text-center font-bold text-base text-purple-300">
       وەرگێڕی ژیر
     </div>
 
-    <!-- دوگمەی بارودۆخ و مێنیوی سێ هێڵ -->
     <div class="flex items-center gap-2">
       <div class="bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1.5 font-medium">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
@@ -100,10 +118,9 @@
     </div>
   </header>
 
-  <!-- ناوەڕۆکی سەرەکی (Main Card) -->
+  <!-- کارت و بەشی سەرەکی -->
   <main class="max-w-md mx-auto w-full custom-card rounded-[28px] p-4 sm:p-5 shadow-2xl flex-1 flex flex-col justify-between">
     <div>
-      <!-- سەردێڕی ناوەوە -->
       <div class="text-center mb-5">
         <h2 class="text-xl sm:text-2xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400 bg-clip-text text-transparent">
           وەرگێڕی ژیری دەستکرد
@@ -111,7 +128,7 @@
         <p class="text-xs text-slate-400 mt-1">تێگەیشتن لە مەبەست و پەندە کوردییەکان</p>
       </div>
 
-      <!-- وەرگێڕان بۆ زمانی: -->
+      <!-- هەڵبژاردنی زمان -->
       <div class="mb-4">
         <span class="text-xs text-slate-400 block mb-2 font-medium">وەرگێڕان بۆ زمانی:</span>
         <div class="grid grid-cols-2 gap-2 bg-[#0a0e17] p-1.5 rounded-2xl border border-slate-800">
@@ -124,7 +141,7 @@
         </div>
       </div>
 
-      <!-- شێوازی دەربڕین (تۆن): -->
+      <!-- هەڵبژاردنی شێوازی دەربڕین (تۆن) -->
       <div class="mb-4">
         <span class="text-xs text-slate-400 block mb-2 font-medium">شێوازی دەربڕین (تۆن):</span>
         <div class="grid grid-cols-4 gap-1.5 bg-[#0a0e17] p-1.5 rounded-2xl border border-slate-800 text-[11px]">
@@ -135,31 +152,20 @@
         </div>
       </div>
 
-      <!-- دەقی کوردی (سیاق / پەند): -->
+      <!-- دەقی کوردی -->
       <div class="mb-4">
         <div class="flex items-center justify-between mb-2 text-xs">
-          <span class="text-slate-300 font-medium">دەقی کوردی (سیاق / پەند):</span>
+          <span class="text-slate-300 font-medium">دەقی کوردی (سۆرانی، بادینی، کۆڵان):</span>
           <div class="flex items-center gap-2 text-slate-400">
-            <button id="clearBtn" class="hover:text-red-400 transition flex items-center gap-0.5">
-              <span>✕</span>
-            </button>
+            <button id="clearBtn" class="hover:text-red-400 transition">✕</button>
             <button id="pasteBtn" class="hover:text-purple-300 transition flex items-center gap-1">
-              <span>پەیست</span>
-              <span>📋</span>
-            </button>
-            <button id="fixGrammarBtn" class="hover:text-purple-300 transition flex items-center gap-1 text-purple-400">
-              <span>چاککردن</span>
-              <span>🪄</span>
-            </button>
-            <button id="imageBtn" class="hover:text-emerald-300 transition flex items-center gap-1 text-emerald-400">
-              <span>وێنە</span>
-              <span>🖼️</span>
+              <span>پەیست</span><span>📋</span>
             </button>
           </div>
         </div>
 
         <div class="inner-box rounded-2xl p-3">
-          <textarea id="inputText" rows="3" placeholder="بۆ نموونە: دەستت خۆش بێت..." class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-600 focus:outline-none resize-none leading-relaxed"></textarea>
+          <textarea id="inputText" rows="3" placeholder="دەقێک بە هەولێری، سلێمانی یان بادینی بنووسە..." class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-600 focus:outline-none resize-none leading-relaxed"></textarea>
         </div>
       </div>
 
@@ -174,8 +180,7 @@
         <div class="flex items-center justify-between mb-1.5 text-xs text-slate-400">
           <span id="outputHeader">ئەنجامی ئینگلیزی (سروشتی):</span>
           <button id="copyBtn" class="hover:text-purple-300 transition text-[11px] flex items-center gap-1">
-            <span>کۆپی</span>
-            <span>📋</span>
+            <span>کۆپی</span><span>📋</span>
           </button>
         </div>
         <div class="inner-box rounded-2xl p-3.5 min-h-[75px] text-xs text-slate-300 flex items-center" dir="ltr">
@@ -190,7 +195,7 @@
   </footer>
 
   <script>
-    // کۆنتڕۆڵی مێنیو
+    // کۆنتڕۆڵی مێنیوی Drawer
     const openMenuBtn = document.getElementById('openMenuBtn');
     const closeMenuBtn = document.getElementById('closeMenuBtn');
     const sidebar = document.getElementById('sidebar');
@@ -210,7 +215,7 @@
     closeMenuBtn.addEventListener('click', () => toggleMenu(false));
     backdrop.addEventListener('click', () => toggleMenu(false));
 
-    // زمان و شێوازەکان
+    // زمان و تۆن
     let currentTargetLang = 'en';
     let currentTone = 'natural';
 
@@ -256,7 +261,7 @@
         const text = await navigator.clipboard.readText();
         inputText.value = text;
       } catch (e) {
-        alert('ڕێگەپێدانی پەیست نییە');
+        alert('ڕێگەپێدانی پەیست نییە لە وێبگەڕەکەتدا');
       }
     });
 
@@ -267,7 +272,7 @@
       }
     });
 
-    // بەڕێوەبردنی مێژووی وەرگێڕان لەناو مێنیو
+    // بەڕێوەبردنی مێژوو
     let history = JSON.parse(localStorage.getItem('kat_history') || '[]');
     function renderHistory() {
       const list = document.getElementById('historyList');
@@ -302,7 +307,7 @@
     translateBtn.addEventListener('click', async () => {
       const text = inputText.value.trim();
       if (!text) {
-        alert('تکایە دەقێک بنووسە!');
+        alert('تکایە سەرەتا دەقێک بنووسە!');
         return;
       }
 
@@ -327,7 +332,6 @@
         outputText.innerText = result;
         outputText.classList.remove('text-slate-500');
 
-        // سەیڤکردن لە مێژوو
         history.unshift({ in: text, out: result });
         localStorage.setItem('kat_history', JSON.stringify(history));
         renderHistory();
@@ -339,6 +343,50 @@
         btnSpinner.classList.add('hidden');
         btnText.innerText = '✦ وەرگێڕان بە تێگەیشتنی قووڵ';
       }
+    });
+
+    // کردارەکانی فەرمیی Google Sign-In
+    window.handleGoogleLogin = function(response) {
+      try {
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        const user = JSON.parse(jsonPayload);
+        localStorage.setItem('kat_user', JSON.stringify(user));
+        applyUserProfile(user);
+      } catch (err) {
+        console.error('Login error:', err);
+      }
+    };
+
+    function applyUserProfile(user) {
+      const signInWrapper = document.getElementById('googleSignInWrapper');
+      if (signInWrapper) signInWrapper.classList.add('hidden');
+      
+      const profileBox = document.getElementById('userProfileBox');
+      profileBox.classList.remove('hidden');
+
+      document.getElementById('userName').innerText = user.name;
+      document.getElementById('userEmail').innerText = user.email;
+      document.getElementById('userAvatar').src = user.picture;
+
+      const topAvatar = document.getElementById('topAvatarImg');
+      if (topAvatar) topAvatar.src = user.picture;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = localStorage.getItem('kat_user');
+      if (savedUser) {
+        applyUserProfile(JSON.parse(savedUser));
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('kat_user');
+      location.reload();
     });
   </script>
 </body>
