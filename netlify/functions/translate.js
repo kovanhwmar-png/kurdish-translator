@@ -4,67 +4,53 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { text, direction, tone } = JSON.parse(event.body || '{}');
+    const { text, targetLang, tone } = JSON.parse(event.body || '{}');
 
     if (!text) {
       return { statusCode: 400, body: 'تکایە دەقێک بنووسە' };
     }
 
     const geminiKey = process.env.GEMINI_API_KEY;
-
     if (!geminiKey) {
-      return {
-        statusCode: 500,
-        body: 'هەڵە: کلیلی GEMINI_API_KEY لە سێرڤەر بوونی نییە'
-      };
+      return { statusCode: 500, body: 'هەڵە: کلیلی GEMINI_API_KEY دانەنراوە' };
     }
 
     const toneInstructions = {
-      natural: 'سروشتی، ڕۆژانە و گفتوگۆیی',
-      formal: 'فەرمی، ئەکادیمی و پڕۆفیشناڵ',
+      natural: 'سروشتی، ڕۆژانە و ئاسایی',
+      formal: 'فەرمی، نووسراوەیی و ئەکادیمی',
       street: 'کۆڵانی، بازاڕی و سلانگ',
-      literary: 'ئەدەبی، شاعیرانە و قووڵ'
+      literary: 'ئەدەبی و شاعیرانە'
     };
 
     const selectedTone = toneInstructions[tone] || 'سروشتی';
+    const isEnglish = targetLang === 'en';
 
-    let promptText = '';
+    const promptText = isEnglish
+      ? `You are an elite Kurdish-English linguist. Translate this Kurdish text (accurately handling Sorani: Hawleri, Sulaymani, and Kurmanji/Badini slang and idioms) into English with a ${selectedTone} tone. Output ONLY the translated text, no quotes or notes:\n\n${text}`
+      : `تۆ وەرگێڕێکی پسپۆڕیت. ئەم دەقە کوردییە وەربگێڕە بۆ زمانی عەرەبی بە شێوازی ${selectedTone}. تەنها دەقی وەرگێڕدراو بنووسە:\n\n${text}`;
 
-    if (direction === 'ku-to-en') {
-      promptText = `You are an expert Kurdish linguist and translator specialized in all Kurdish dialects (Sorani: Erbil/Hawleri, Sulaymaniyah, and Kurmanji/Badini) including local street slang and idioms.
-Task: Translate the following Kurdish text into accurate English with a ${selectedTone} tone.
-Rules:
-1. Deeply understand Kurdish idioms, slang, and dialectal variations (Erbil, Sulaymani, Badini).
-2. Output ONLY the English translation without quotes, notes, or extra commentary.
-
-Kurdish text:
-${text}`;
-    } else {
-      promptText = `تۆ زمانزانێکی لێهاتووی زمانی کوردییت. ئەم دەقە ئینگلیزییە وەربگێڕە بۆ کوردی بە شێوازی ${selectedTone}.
-تەنها دەقی وەرگێڕدراوی کوردی بنووسە بەبێ هیچ تێبینی و ڕوونکردنەوەیەکی زیادە.
-
-دەقی ئینگلیزی:
-${text}`;
-    }
-
-    // بەکارهێنانی مۆدێلی نوێی فەرمی gemini-3.8-flash
-    const res = await fetch(
+    // بەکارهێنانی مۆدێلی نوێی داواکراو
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${geminiKey}`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-          generationConfig: {
-            temperature: 0.3
-          }
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: promptText }]
+            }
+          ]
         })
       }
     );
 
-    const data = await res.json();
+    const data = await response.json();
 
-    if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
       return {
         statusCode: 200,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' },
@@ -80,7 +66,7 @@ ${text}`;
   } catch (error) {
     return {
       statusCode: 500,
-      body: `هەڵەی سیستەم: ${error.message}`
+      body: `هەڵە: ${error.message}`
     };
   }
 };
